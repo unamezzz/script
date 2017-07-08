@@ -1,0 +1,107 @@
+#!/usr/bin/expect
+
+#require expect , use apt-get install expect or others to install expect
+#使用bash脚本调用expect脚本自动化
+#bash: cat list | while read line ; do echo $line | awk ... '{ system("expect ex.expect "$1" "$2" "$3" "$4" "$5" "date" "file" > ./"date"_result/"$1"_expect_log.txt 2>&1") } ' ; done
+
+set timeout -1
+set ip [lrange $argv 0 0]
+set port [lrange $argv 1 1]
+set usr [lrange $argv 2 2]
+set password [lrange $argv 3 3]
+set root [lrange $argv  4 4]
+set password2 [lrange $argv 5 5]
+set date [lrange $argv 7 7]
+#运行开始时间
+set file [lrange $argv 8 8]
+#上传脚本文件
+
+send_user "\r\n********************login && make directory && backup history log********************\r\n\r\n"
+spawn ssh $usr@$ip -p $port 
+expect {
+"ssh:" { send_user "\r\nssh connect error\r\n" ; exit }
+"yes/no" { send "yes\r"; exp_continue }
+"*assword:" { 
+	send_user "********\r\n"
+	send "$password\r" 
+	}
+}
+expect {
+	"denied" {
+		send_user "\r\npassword error login failed\r\n"
+		exit
+	}
+	"$usr@" {
+		send "mkdir /tmp/zzz/$date -p \r"
+		expect "$usr@"
+		send "cd /tmp \r"
+		expect "$usr@"
+		send "for i in `ls *.log` ; do echo \$i | awk -F '\[/_]' '{ if ( \$1 == \"$ip\" ) { print \"backup \"\$0 ; system(\"mv \"\$0\" $date\_\"\$0) } }' ; done \r"
+		expect "$usr@"
+		send "\r"
+		send "exit\r" 
+	}
+}
+expect eof
+send_user "\r\n"
+
+send_user "\r\n********************upload script********************\r\n\r\n"
+spawn scp -P $port $file $usr@$ip:/tmp/zzz/$date/
+expect {
+	"*password:" { 
+		send_user "********"
+		send "$password\r"
+	}
+}
+expect eof
+send_user "\r\n"
+
+send_user "\r\n********************run script********************\r\n\r\n"
+spawn ssh $usr@$ip -p $port
+expect {
+"yes/no" { send "yes\r"; exp_continue }
+"*assword:" {
+        send_user "********\r\n"
+        send "$password\r"
+        }
+}
+expect {
+        "denied" {
+                send_user "\r\npassword error\r\n"
+                exit
+        }
+        "$usr@" {
+                send "cd /tmp/zzz/$date \r"
+		send "unzip -o *.zip -d script \r"
+		expect "$usr@"
+		send "cd script \r"
+		send "sh *.sh $ip $root $password2 &> /tmp/zzz/log.txt && echo success\r"
+		expect "$usr@"
+        send "exit\r"
+        }
+}
+expect eof
+send_user "\r\n"
+
+send_user "\r\n********************download result********************\r\n\r\n"
+spawn scp -P $port $usr@$ip:/tmp/zzz/log.txt ./$date\_result/$ip\_log.txt
+expect {
+        "*password:" {
+                send_user "********"
+                send "$password\r"
+        }
+}
+expect eof
+send_user "\r\n"
+
+spawn scp -P $port $usr@$ip:/tmp/$ip*.log ./$date\_result/
+expect {
+        "*password:" {
+                send_user "********"
+                send "$password\r"
+        }
+}
+expect eof
+send_user "\r\n"
+
+exit
