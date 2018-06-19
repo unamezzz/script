@@ -1,0 +1,103 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+</head>
+<script>
+var blob;
+//http://www.alloyteam.com/2015/04/how-to-paste-zhuangbility/
+document.addEventListener('paste', function(e){
+    var clipboard = e.clipboardData;
+    // 有无内容
+    if(!clipboard.items || !clipboard.items.length){
+        clear();
+        return;
+    }   
+	for(var i = 0; i < clipboard.items.length; i++){
+		var temp = clipboard.items[i];
+		if(temp.kind === 'file' && temp.type.indexOf('image') === 0){
+			// 获取图片文件
+			blob = temp.getAsFile();
+			// TODO: 做爱做的事
+			var reader = new FileReader();
+			reader.readAsDataURL(blob); 
+			reader.onloadend = function() {
+				var base64data = reader.result;
+				document.getElementById("img").src=base64data;
+				document.getElementById("tmp1").value=base64data;
+				document.getElementById("tmp2").value='![img]('+base64data+')';
+				document.getElementById("img").style='';
+				document.getElementById("link").style='display:none';
+				document.getElementById("msg").innerHTML="图片粘贴成功";
+			}
+		} else if(temp = clipboard.getData('text/plain')){
+			// 将文本预格式化
+			var splitList = temp.split(/\n/);
+			temp = '';
+			for(var i = 0, len = splitList.length; i < len; i++){
+				temp += splitList[i].replace(/\t/g, '    ')
+					.replace(/ /g, ' ') + '<br>';
+			}
+			console.log(temp);
+			// TODO: 做爱做的事
+		}
+	}
+}, false);
+</script>
+<body>
+<span id="msg">hello</span><input type="text" readonly=readonly style="border:0;" size=4 /><input type="text" id="link" readonly="readonly" maxlength=100 size=100 style="display:none"/>
+</br>
+<input type="button" value="复制base64格式 data:image/png;base64,..." onclick="copy('tmp1')"/>
+<input type="button" value="复制md格式 ![img](data:image/png;base64,...)" onclick="copy('tmp2')"/>
+</br>
+<input type="button" value="上传" onclick="upload()"/>
+<input type="button" value="复制链接" onclick="copylink('url')"/>
+<input type="button" value="复制链接为md格式 ![img](http://...)" onclick="copylink('md')"/>
+</br>
+</br>
+<img id="img" border="1" style="display:none"/>
+<input type="text" id="tmp1" style="display:none"/>
+<input type="text" id="tmp2" style="display:none"/>
+
+<script>
+function copy(id){
+	document.getElementById(id).style='';
+	document.getElementById(id).select(); // 选择对象
+	document.execCommand("copy"); // 执行浏览器复制命令
+	document.getElementById(id).style='display:none';
+	document.getElementById("msg").innerHTML="复制成功";
+}
+function copylink(type){
+	if(type == 'url')
+		document.getElementById("link").value=link;
+	else
+		document.getElementById("link").value='![img]('+link+')';
+	document.getElementById("link").select(); // 选择对象
+	document.execCommand("copy"); // 执行浏览器复制命令
+	document.getElementById("msg").innerHTML="复制成功";
+}
+var response;
+var msg;
+var link;
+function upload(){
+	var formData = new FormData();
+	formData.append("pic",blob);
+	request = new XMLHttpRequest();
+	request.open("POST", "http://zzz/upload");
+	request.send(formData);
+	request.onreadystatechange = function(){
+		//若响应完成且请求成功
+		if(request.readyState === 4 ){
+			response = request.responseText;
+			response2 = eval('('+response+')');
+			msg = response2['msg'];
+			link = response2['url'];
+			document.getElementById("msg").innerHTML=msg;
+			document.getElementById("link").value=link;
+			document.getElementById("link").style='border:0';
+		}
+	}
+}
+</script>
+
+</body>
+</html>
